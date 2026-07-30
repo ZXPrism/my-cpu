@@ -1,4 +1,4 @@
-# CPU Project Specification (Rev. A - 20260729)
+# CPU Project Specification (Rev. B - 20260730)
 
 ## 1. Project Intent
 
@@ -24,12 +24,13 @@ completion criteria.
 Stages are identified in Greek alphabetical order. The current partitioning is
 rough and may be revised during development.
 
-Current stage: **Alpha - ISA Design**
+Current stage: **Alpha - ISA Design (complete)**
 
 ### 2.1 Alpha: ISA Design
 
 The alpha stage will design the instruction set architecture.
-This stage is in progress.
+This stage is complete. Its ISA specification may still be revised during
+later development.
 
 Deliverable:
 
@@ -72,14 +73,25 @@ notation. The final assembly-language syntax is deferred.
 ### 3.2 Fundamental Units
 
 - The architectural data width is 16 bits.
-- Every instruction is exactly one 16-bit word.
-- An architectural memory address identifies one 16-bit word, not one byte.
+- Every instruction is exactly 16 bits and occupies two consecutive byte
+  addresses.
+- An architectural memory address identifies one 8-bit byte.
 - Memory addresses and the program counter are 16 bits wide.
 - Register identifiers and opcodes are 4 bits wide.
 
-The architectural address space therefore contains 65,536 words
-(`0x0000` through `0xFFFF`), equivalent to 128 KiB of storage. Individual
-bytes do not have architectural addresses.
+The architectural address space therefore contains 65,536 bytes
+(`0x0000` through `0xFFFF`), equivalent to 64 KiB of storage.
+
+All 16-bit instructions and data values are little-endian:
+
+```text
+memory[address]     = value[7:0]
+memory[address + 1] = value[15:8]
+```
+
+The starting address of every 16-bit instruction fetch, load, and store shall
+be even. Valid starting addresses therefore range from `0x0000` through
+`0xFFFE`. An odd starting address is architecturally invalid.
 
 ### 3.3 Architectural State
 
@@ -94,13 +106,13 @@ is 16 bits wide and is selected by a 4-bit register identifier.
 
 #### 3.3.2 Program Counter
 
-The program counter (`PC`) is a separate 16-bit register containing the word
+The program counter (`PC`) is a separate 16-bit register containing the byte
 address of the current instruction.
 
 #### 3.3.3 Memory
 
-Instruction and data accesses share one unified, word-addressed memory.
-`LDR` and `STR` may therefore read and modify words that contain instructions.
+Instruction and data accesses share one unified, byte-addressed memory.
+`LDR` and `STR` may therefore read and modify bytes that contain instructions.
 
 ### 3.4 Instruction Encoding
 
@@ -139,8 +151,9 @@ Used operand fields are packed toward the most-significant end of the operand
 area. Unused fields are always the least-significant fields. An assembler
 shall encode unused fields as zero; the CPU shall ignore their values.
 
-All 16 opcode values are assigned. Consequently, every 16-bit word identifies
-a valid instruction and the ISA has no illegal-instruction encoding.
+All 16 opcode values are assigned. Consequently, every 16-bit instruction
+encoding identifies a valid instruction and the ISA has no
+illegal-instruction encoding.
 
 ### 3.5 General Execution Semantics
 
@@ -149,7 +162,8 @@ irrespective of the number of hardware cycles used by an implementation.
 
 For an instruction at address `p`:
 
-1. The CPU fetches the 16-bit instruction word from `memory[p]`.
+1. The CPU fetches the little-endian 16-bit instruction beginning at the even
+   byte address `p`.
 2. All source register values are read before any destination register is
    written.
 3. The instruction performs its register, memory, and control-flow effects.
@@ -157,11 +171,12 @@ For an instruction at address `p`:
 Unless an instruction specifies another value, the next program counter is:
 
 ```text
-PC <- (p + 1) modulo 65536
+PC <- (p + 2) modulo 65536
 ```
 
-The increment is one 16-bit word, not one byte. Thus, execution after address
-`0xFFFF` continues at address `0x0000`.
+The increment is two bytes because every instruction is 16 bits wide.
+Sequential execution after the instruction at `0xFFFE` continues at
+`0x0000`.
 
 All ordinary arithmetic results are reduced modulo 65,536. Signed operations
 interpret 16-bit values using two's-complement representation. The ISA has no
@@ -169,9 +184,11 @@ arithmetic flags and does not raise arithmetic-overflow exceptions.
 
 ### 3.6 Instruction Semantics
 
-In the definitions below, `R[n]` is the value read from register `xn`, `M[a]`
-is the 16-bit word at memory address `a`, and `s16(v)` is the signed
-two's-complement interpretation of the 16-bit value `v`.
+In the definitions below, `R[n]` is the value read from register `xn`,
+`load16(a)` loads `memory[a] OR (memory[a + 1] << 8)`, and `store16(a, v)`
+stores `v[7:0]` at `memory[a]` and `v[15:8]` at `memory[a + 1]`. Both
+operations require an even `a`. `s16(v)` is the signed two's-complement
+interpretation of the 16-bit value `v`.
 
 #### 3.6.1 Arithmetic, Shift, Comparison, and Logic
 
@@ -193,13 +210,13 @@ The effective shift count is therefore in the range 0 through 15.
 
 #### 3.6.2 Memory
 
-| Instruction | Effect            |
-| ----------- | ----------------- |
-| `STR A, B`  | `M[R[B]] <- R[A]` |
-| `LDR A, B`  | `R[A] <- M[R[B]]` |
+| Instruction | Effect                 |
+| ----------- | ---------------------- |
+| `STR A, B`  | `store16(R[B], R[A])`  |
+| `LDR A, B`  | `R[A] <- load16(R[B])` |
 
-Each memory instruction transfers exactly one 16-bit word. There is no
-immediate address offset.
+Each memory instruction transfers exactly 16 bits beginning at the byte
+address in its address register. There is no immediate address offset.
 
 #### 3.6.3 Immediate Load
 
@@ -217,12 +234,12 @@ R[A] <- 0x00 || imm8
 
 ```text
 target <- R[B]
-R[A]   <- (p + 1) modulo 65536
+R[A]   <- (p + 2) modulo 65536
 PC     <- target
 ```
 
 Selecting `x0` as field A discards the link and produces a plain
-register-indirect jump.
+register-indirect jump. The target address shall be even.
 
 `BAL A, B, C` branches only when the condition register contains exactly
 `0x0001`. The condition and target are read before the link is written:
@@ -230,19 +247,20 @@ register-indirect jump.
 ```text
 if R[A] == 0x0001:
     target <- R[B]
-    R[C]   <- (p + 1) modulo 65536
+    R[C]   <- (p + 2) modulo 65536
     PC     <- target
 else:
-    PC     <- (p + 1) modulo 65536
+    PC     <- (p + 2) modulo 65536
 ```
 
 The link register is unchanged when the branch is not taken. Selecting `x0`
-as field C discards the link when the branch is taken.
+as field C discards the link when the branch is taken. A taken branch target
+shall be even.
 
 #### 3.6.5 Environment Service
 
 `INT A` synchronously requests an execution-environment service identified by
-`R[A]`. The continuation address is `(p + 1) modulo 65536`.
+`R[A]`. The continuation address is `(p + 2) modulo 65536`.
 
 The requested service is responsible for preserving or restoring the required
 machine state and for returning to the correct continuation address. A service
@@ -261,10 +279,13 @@ On CPU reset:
 
 Memory contents are established externally before execution.
 
-Because memory is word-addressed, every `PC` value is instruction-aligned.
-The ISA currently defines no external hardware interrupts, architectural
-exceptions, or halt instruction. An execution-environment service may provide
-termination.
+Fetching an instruction or executing `LDR` or `STR` at an odd starting address
+is architecturally invalid. Hardware behavior for an invalid access is not
+specified, and conforming software shall not rely on it. The virtual machine
+shall diagnose such an access rather than silently aligning it.
+
+The ISA currently defines no external hardware interrupts or halt instruction.
+An execution-environment service may provide termination.
 
 ### 3.8 Pseudoinstructions
 
@@ -273,13 +294,18 @@ ISA. Multiple real instructions may be used to construct a full 16-bit
 constant or perform byte-oriented operations. Their exact definitions are
 deferred to the assembly-language specification.
 
-## 4. Programming-Language Toolchain
+If byte-load or byte-store operations are provided, they shall be
+pseudoinstructions composed from the 16-bit `LDR`, `STR`, and ALU instructions;
+they shall not add real ISA instructions or opcode values.
 
-A custom high-level programming language will be designed for the CPU.
+## 4. Rust Toolchain
 
-- The compiler frontend will run on the host computer.
-- The compiler backend will target the custom CPU.
-- LLVM will provide the compiler infrastructure.
+Rust is the high-level programming language for the CPU. A new programming
+language and compiler frontend will not be developed.
+
+- The existing Rust frontend will run on the host computer.
+- A custom LLVM target/backend will generate code for the custom CPU.
+- Supporting Rust target and runtime components will be provided as required.
 - The implementation should make the greatest practical use of LLVM to avoid
   reimplementing established compiler functionality.
 
@@ -294,8 +320,18 @@ machine will behaviorally simulate the CPU.
 
 The virtual machine will be used to:
 
-- test the custom programming language and its generated programs; and
+- test assembly programs and Rust programs compiled for the CPU; and
 - regress later hardware implementations.
+
+The virtual machine will be implemented in C++ and developed in multiple
+stages. Its first stage will operate on semantic instruction records rather
+than packed 16-bit instruction encodings. A record will represent an opcode
+and its operand fields directly, allowing instruction behavior to be developed
+before bit-level decoding.
+
+The virtual machine will be exposed to Godot through GDExtension. Godot will
+provide an interactive environment for writing assembly programs and
+inspecting machine state.
 
 At reset, the virtual machine will initialize `x1` through `x15` with random
 values to discourage software from depending on unspecified register state.
@@ -329,9 +365,11 @@ The final CPU will be physically constructed using:
 The following details are intentionally deferred:
 
 - the assembly-language definition;
-- pseudoinstruction expansions and byte-packing conventions;
+- pseudoinstruction expansions, including byte loads and stores;
 - the calling convention and other software ABI details;
 - execution-environment service identifiers and conventions;
+- the supported Rust subset, target data layout, and runtime support;
+- virtual-machine stages after the initial semantic-instruction stage;
 - the detailed project schedule and stage completion criteria;
 - the final beta-stage demonstration programs;
 - the gamma-stage deliverables and subsequent stages; and
