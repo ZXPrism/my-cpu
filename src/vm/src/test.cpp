@@ -475,6 +475,10 @@ TEST_SUITE("Instructions") {
 		CHECK_THROWS(vm.exec(Instruction(OpCode::BAL, 3, 2, 4)));
 	}
 
-	// INT can't be tested for now
-	// Because I have not decided the spec for that
+	TEST_CASE("INT(0)") {
+		using namespace mycpu;
+		VirtualMachine vm;
+
+		CHECK_EQ(vm.exec(Instruction(OpCode::INT, 0, 0, 0)), StepStatus::HALT);
+	}
 }

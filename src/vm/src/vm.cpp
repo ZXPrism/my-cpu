@@ -50,8 +50,7 @@ StepStatus VirtualMachine::exec(Instruction inst) {
 	u8 link = REG_COUNT;
 	u8 jmp_target = REG_COUNT;
 	u8 condition = REG_COUNT;
-	u8 service_id = REG_COUNT;
-
+	u16 service_id = 42;
 	u16 tmp = 42;
 
 	switch (inst.get_opcode()) {
@@ -235,12 +234,11 @@ StepStatus VirtualMachine::exec(Instruction inst) {
 
 		break;
 	case OpCode::INT:
-		service_id = field_a;
-		if (reg_file[service_id] == 0) {  // test: print
-			std::cout << reg_file[15] << '\n';
-		} else if (reg_file[service_id] == 1) {  // test: halt
+		service_id = reg_file[field_a];
+		if (service_id == 0) {
 			return StepStatus::HALT;
 		}
+		throw std::runtime_error(std::format("Unknown service id {}", service_id));
 
 		break;
 	}
@@ -312,6 +310,14 @@ void VirtualMachine::load_from_file(const std::string &file_path) {
 	fin.read(reinterpret_cast<char *>(mem.data()), n_bytes);
 
 	fin.close();
+}
+
+void VirtualMachine::dump_memory(const std::string &output_path) const {
+	std::ofstream fout(output_path, std::ios::binary | std::ios::trunc);
+
+	fout.write(reinterpret_cast<const char *>(mem.data()), MEM_SIZE_BYTES);
+
+	fout.close();
 }
 
 }  // namespace mycpu

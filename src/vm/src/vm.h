@@ -35,6 +35,8 @@ public:
 	void load_from_file(const std::string &file_path);
 	void load_instruction(Instruction inst, u16 addr);
 
+	void dump_memory(const std::string &output_path) const;
+
 private:
 	u16 program_counter = 0;
 	std::array<u16, REG_COUNT> reg_file;
