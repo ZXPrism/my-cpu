@@ -119,6 +119,11 @@ TEST_SUITE("Instructions") {
 		vm.exec(Instruction(OpCode::LI, 3, 0, 14));
 		vm.exec(Instruction(OpCode::ADD, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 29);
+
+		load16(vm, 2, 0xFFFF);
+		load16(vm, 3, 0xABCD);
+		vm.exec(Instruction(OpCode::ADD, 1, 2, 3));
+		CHECK_EQ(vm.get_reg(1), 0xABCC);
 	}
 
 	TEST_CASE("SUB") {
@@ -128,7 +133,7 @@ TEST_SUITE("Instructions") {
 		vm.exec(Instruction(OpCode::LI, 2, 0, 9));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 5));
 		vm.exec(Instruction(OpCode::SUB, 1, 2, 3));
-		CHECK_EQ(vm.get_reg(1), 4);
+		CHECK_EQ(vm.get_reg(1), 4);  // 9 - 5 =  4
 
 		vm.exec(Instruction(OpCode::LI, 2, 0, 3));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 7));
@@ -143,7 +148,12 @@ TEST_SUITE("Instructions") {
 		vm.exec(Instruction(OpCode::LI, 2, 0, 9));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 3));
 		vm.exec(Instruction(OpCode::SLL, 1, 2, 3));
-		CHECK_EQ(vm.get_reg(1), 72);
+		CHECK_EQ(vm.get_reg(1), 72);  // 9 << 3 = 72
+
+		vm.exec(Instruction(OpCode::LI, 2, 8, 0));
+		vm.exec(Instruction(OpCode::LI, 3, 0, 15));
+		vm.exec(Instruction(OpCode::SLL, 1, 2, 3));
+		CHECK_EQ(vm.get_reg(1), 0);  // 0x80 << 15 = 0
 	}
 
 	TEST_CASE("SRL") {
@@ -153,7 +163,12 @@ TEST_SUITE("Instructions") {
 		vm.exec(Instruction(OpCode::LI, 2, 0, 9));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 2));
 		vm.exec(Instruction(OpCode::SRL, 1, 2, 3));
-		CHECK_EQ(vm.get_reg(1), 2);
+		CHECK_EQ(vm.get_reg(1), 2);  // 9 >> 2 = 2
+
+		vm.exec(Instruction(OpCode::LI, 2, 0, 9));
+		vm.exec(Instruction(OpCode::LI, 3, 0, 6));
+		vm.exec(Instruction(OpCode::SRL, 1, 2, 3));
+		CHECK_EQ(vm.get_reg(1), 0);  // 9 >> 6 = 0
 	}
 
 	TEST_CASE("SRA") {
@@ -175,6 +190,17 @@ TEST_SUITE("Instructions") {
 		vm.exec(Instruction(OpCode::LI, 3, 0, 1));
 		vm.exec(Instruction(OpCode::SRA, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 0xFFFB);  // -9 >> 1 = -5
+
+		// R[2] = -9
+		vm.exec(Instruction(OpCode::LI, 2, 0xF, 6));
+		vm.exec(Instruction(OpCode::LI, 4, 0xF, 0xF));
+		vm.exec(Instruction(OpCode::LI, 5, 0, 8));
+		vm.exec(Instruction(OpCode::SLL, 4, 4, 5));  // << 8
+		vm.exec(Instruction(OpCode::ADD, 2, 2, 4));  // fill high 8 bits with 0xFF
+		// R[3] = 6
+		vm.exec(Instruction(OpCode::LI, 3, 0, 6));
+		vm.exec(Instruction(OpCode::SRA, 1, 2, 3));
+		CHECK_EQ(vm.get_reg(1), 0xFFFF);  // -9 >> 6 = -1
 	}
 
 	TEST_CASE("SLT") {
