@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <string>
+#include <vector>
 
 #include <instruction.h>
 #include <type.h>
@@ -29,6 +31,8 @@ public:
 	[[nodiscard]] u8 get_mem(u16 addr) const;
 	[[nodiscard]] u16 get_pc() const;
 
+	void load_from_dram(const std::vector<u8> &bytecode);
+	void load_from_file(const std::string &file_path);
 	void load_instruction(Instruction inst, u16 addr);
 
 private:

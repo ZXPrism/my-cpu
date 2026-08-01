@@ -1,7 +1,9 @@
 #include <cassert>
 #include <format>
+#include <fstream>
 #include <iostream>
 #include <random>
+#include <ranges>
 #include <stdexcept>
 
 #include <vm.h>
@@ -24,27 +26,6 @@ VirtualMachine::VirtualMachine() {
 	for (int i = 0; i < MEM_SIZE_BYTES; i++) {
 		mem[i] = static_cast<u8>(dist8(engine));
 	}
-
-	// test program: fib sequence
-	load_instruction(Instruction(OpCode::XOR, 1, 1, 1), 0);   // counter
-	load_instruction(Instruction(OpCode::LI, 2, 0, 1), 2);    // a
-	load_instruction(Instruction(OpCode::LI, 3, 0, 1), 4);    // b
-	load_instruction(Instruction(OpCode::XOR, 4, 4, 4), 6);   // c
-	load_instruction(Instruction(OpCode::LI, 5, 0, 1), 8);    // "1"
-	load_instruction(Instruction(OpCode::XOR, 6, 6, 6), 10);  // condition=False
-	load_instruction(Instruction(OpCode::LI, 7, 1, 0), 12);   // jmp target
-	load_instruction(Instruction(OpCode::LI, 8, 0, 10), 14);  // "10"
-
-	load_instruction(Instruction(OpCode::ADD, 4, 2, 3), 16);   // c = a + b
-	load_instruction(Instruction(OpCode::ADD, 2, 0, 3), 18);   // a = b
-	load_instruction(Instruction(OpCode::ADD, 3, 0, 4), 20);   // b = c
-	load_instruction(Instruction(OpCode::ADD, 15, 0, 4), 22);  // mov c to result
-	load_instruction(Instruction(OpCode::INT, 0, 0, 0), 24);
-	load_instruction(Instruction(OpCode::ADD, 1, 1, 5), 26);   // counter += 1
-	load_instruction(Instruction(OpCode::SLTU, 6, 1, 8), 28);  // counter < 10?
-	load_instruction(Instruction(OpCode::BAL, 6, 7, 0), 30);   // jmp if counter < 10
-	load_instruction(Instruction(OpCode::LI, 1, 0, 1), 32);
-	load_instruction(Instruction(OpCode::INT, 1, 0, 0), 34);  // halt
 }
 
 void VirtualMachine::dump_regs() const {
@@ -300,6 +281,37 @@ void VirtualMachine::load_instruction(Instruction inst, u16 addr) {
 	assert(addr % 2 == 0);
 	mem[addr] = inst.data & 0xFF;
 	mem[addr + 1] = (inst.data >> 8) & 0xFF;
+}
+
+void VirtualMachine::load_from_dram(const std::vector<u8> &bytecode) {
+	auto n_bytes = bytecode.size();
+	if (n_bytes % 2 == 1) {
+		throw std::runtime_error(std::format("Bytecode is invalid since byte count is {}, which is odd", n_bytes));
+	}
+	if (n_bytes > MEM_SIZE_BYTES) {
+		throw std::runtime_error(std::format("Too many instructions, given {}, max allowed {}", n_bytes / 2, MEM_SIZE_BYTES / 2));
+	}
+	std::ranges::copy(bytecode, mem.begin());
+}
+
+void VirtualMachine::load_from_file(const std::string &file_path) {
+	std::ifstream fin(file_path, std::ios::binary | std::ios::ate);
+	if (!fin) {
+		throw std::runtime_error(std::format("Could not open bytecode file at {}", file_path));
+	}
+
+	auto n_bytes = static_cast<std::size_t>(fin.tellg());
+	if (n_bytes % 2 == 1) {
+		throw std::runtime_error(std::format("Bytecode is invalid since byte count is {}, which is odd", n_bytes));
+	}
+	if (n_bytes > MEM_SIZE_BYTES) {
+		throw std::runtime_error(std::format("Too many instructions, given {}, max allowed {}", n_bytes / 2, MEM_SIZE_BYTES / 2));
+	}
+
+	fin.seekg(0);
+	fin.read(reinterpret_cast<char *>(mem.data()), n_bytes);
+
+	fin.close();
 }
 
 }  // namespace mycpu
