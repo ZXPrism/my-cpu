@@ -43,6 +43,8 @@ VirtualMachine::VirtualMachine() {
 	load_instruction(Instruction(OpCode::ADD, 1, 1, 5), 26);   // counter += 1
 	load_instruction(Instruction(OpCode::SLTU, 6, 1, 8), 28);  // counter < 10?
 	load_instruction(Instruction(OpCode::BAL, 6, 7, 0), 30);   // jmp if counter < 10
+	load_instruction(Instruction(OpCode::LI, 1, 0, 1), 32);
+	load_instruction(Instruction(OpCode::INT, 1, 0, 0), 34);  // halt
 }
 
 void VirtualMachine::dump_regs() const {
@@ -53,7 +55,7 @@ void VirtualMachine::dump_regs() const {
 	std::cout << "=======\n\n";
 }
 
-bool VirtualMachine::exec(Instruction inst) {
+StepStatus VirtualMachine::step(Instruction inst) {
 	u8 field_a = inst.get_field_a();
 	u8 field_b = inst.get_field_b();
 	u8 field_c = inst.get_field_c();
@@ -228,7 +230,7 @@ bool VirtualMachine::exec(Instruction inst) {
 		}
 		program_counter = tmp;
 
-		return false;
+		return StepStatus::JUMP;
 
 		break;
 	case OpCode::BAL:
@@ -247,30 +249,36 @@ bool VirtualMachine::exec(Instruction inst) {
 			}
 			program_counter = tmp;
 
-			return false;
+			return StepStatus::JUMP;
 		}
 
 		break;
 	case OpCode::INT:
 		service_id = field_a;
-		if (reg_file[service_id] == 0) {
+		if (reg_file[service_id] == 0) {  // test: print
 			std::cout << reg_file[15] << '\n';
+		} else if (reg_file[service_id] == 1) {  // test: halt
+			return StepStatus::HALT;
 		}
 
 		break;
 	}
 
-	return true;
+	return StepStatus::CONTINUE;
 }
 
 void VirtualMachine::run() {
-	while (program_counter < 31) {
+	while (true) {
 		u16 instruction_data =
 		    static_cast<u16>(mem[program_counter]) +
 		    (static_cast<u16>(mem[program_counter + 1]) << 8);
 		auto curr_inst = Instruction(instruction_data);
-		if (exec(curr_inst)) {
+
+		auto step_status = step(curr_inst);
+		if (step_status == StepStatus::CONTINUE) {
 			program_counter += 2;
+		} else if (step_status == StepStatus::HALT) {
+			break;
 		}
 	}
 }

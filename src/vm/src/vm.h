@@ -10,13 +10,19 @@ namespace mycpu {
 constexpr int REG_COUNT = 16;
 constexpr int MEM_SIZE_BYTES = 1 << 16;
 
+enum class StepStatus {
+	CONTINUE,
+	JUMP,
+	HALT,
+};
+
 class VirtualMachine {
 public:
 	VirtualMachine();
 
 	void dump_regs() const;
 
-	bool exec(Instruction inst);  // return true if no jump
+	StepStatus step(Instruction inst);
 	void run();
 
 	[[nodiscard]] u16 get_reg(u8 reg_idx) const;
