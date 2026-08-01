@@ -24,7 +24,7 @@ completion criteria.
 Stages are identified in Greek alphabetical order. The current partitioning is
 rough and may be revised during development.
 
-Current stage: **Alpha - ISA Design (complete)**
+Current stage: **Beta - Virtual Machine (in progress)**
 
 ### 2.1 Alpha: ISA Design
 
@@ -42,7 +42,7 @@ philosophy. It is inspired by RV32I but is a distinct, incompatible ISA.
 ### 2.2 Beta: Virtual Machine
 
 The beta stage will implement a virtual machine that reliably conforms to the
-ISA.
+ISA. This stage is in progress.
 
 Deliverables:
 
@@ -52,13 +52,28 @@ Deliverables:
 Potential demonstration programs include computing the Fibonacci sequence and
 printing the program itself. The final demonstration set is to be determined.
 
-### 2.3 Gamma: STM32 Hardware
+### 2.3 Gamma: Assembler
 
-The gamma stage will construct the STM32F103C8T6-based hardware prototype.
-Its deliverables are to be determined.
+The gamma stage will implement the assembler. Pseudoinstructions will be
+introduced and designed during this stage.
 
-Stages after gamma and their deliverables are also to be determined. The
-detailed task schedule and completion criteria have not yet been defined.
+Deliverable:
+
+- the assembler.
+
+### 2.4 Delta: Rust Backend
+
+The delta stage will add a custom backend for Rust targeting the CPU.
+
+Deliverable:
+
+- a Rust backend capable of generating code for the CPU.
+
+The STM32F103C8T6-based hardware prototype originally planned for gamma is
+postponed to a later stage. Its new stage identifier and deliverables are to be
+determined. Other stages after delta and their deliverables are also to be
+determined. The detailed task schedule and completion criteria have not yet
+been defined.
 
 ## 3. Alpha ISA Specification
 
@@ -372,5 +387,7 @@ The following details are intentionally deferred:
 - virtual-machine stages after the initial semantic-instruction stage;
 - the detailed project schedule and stage completion criteria;
 - the final beta-stage demonstration programs;
-- the gamma-stage deliverables and subsequent stages; and
+- detailed gamma- and delta-stage completion criteria;
+- the new stage identifier and deliverables for the STM32 prototype;
+- other stages after delta and their deliverables; and
 - CPU cycle-control and related hardware design decisions.

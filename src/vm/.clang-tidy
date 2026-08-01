@@ -8,6 +8,7 @@ Checks: >
   -readability-identifier-naming,
   -readability-identifier-length,
   -readability-uppercase-literal-suffix,
-  -readability-convert-member-functions-to-static
+  -readability-convert-member-functions-to-static,
+  -readability-function-cognitive-complexity
 
 HeaderFilterRegex: "include/.*|src/.*|examples/.*"
