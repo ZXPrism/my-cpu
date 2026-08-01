@@ -9,14 +9,23 @@
 namespace mycpu {
 
 VirtualMachine::VirtualMachine() {
+	reg_file[0] = 0;
+
 	// randomly fill reg file
 	std::random_device rd;
 	std::mt19937_64 engine(rd());
-	std::uniform_int_distribution<u16> dist(0, (1 << 16) - 1);
+	std::uniform_int_distribution<u32> dist16(0, (1 << 16) - 1);
 	for (int i = 1; i < REG_COUNT; i++) {
-		reg_file[i] = dist(engine);
+		reg_file[i] = static_cast<u16>(dist16(engine));
 	}
 
+	// randomly fill memory
+	std::uniform_int_distribution<u32> dist8(0, (1 << 8) - 1);
+	for (int i = 0; i < MEM_SIZE_BYTES; i++) {
+		mem[i] = static_cast<u8>(dist8(engine));
+	}
+
+	// test program: fib sequence
 	load_instruction(Instruction(OpCode::XOR, 1, 1, 1), 0);   // counter
 	load_instruction(Instruction(OpCode::LI, 2, 0, 1), 2);    // a
 	load_instruction(Instruction(OpCode::LI, 3, 0, 1), 4);    // b
@@ -59,6 +68,8 @@ bool VirtualMachine::exec(Instruction inst) {
 	u8 jmp_target = REG_COUNT;
 	u8 condition = REG_COUNT;
 	u8 service_id = REG_COUNT;
+
+	u16 tmp = 42;
 
 	switch (inst.get_opcode()) {
 	case OpCode::ADD:
@@ -207,11 +218,11 @@ bool VirtualMachine::exec(Instruction inst) {
 		link = field_a;
 		jmp_target = field_b;
 
+		tmp = reg_file[jmp_target];
 		if (link != 0) {
 			reg_file[link] = program_counter + 2;
 		}
-
-		program_counter = reg_file[jmp_target];
+		program_counter = tmp;
 
 		return false;
 
@@ -222,10 +233,11 @@ bool VirtualMachine::exec(Instruction inst) {
 		link = field_c;
 
 		if (reg_file[condition] == 1) {
+			tmp = reg_file[jmp_target];
 			if (link != 0) {
 				reg_file[link] = program_counter + 2;
 			}
-			program_counter = reg_file[jmp_target];
+			program_counter = tmp;
 
 			return false;
 		}
@@ -233,7 +245,7 @@ bool VirtualMachine::exec(Instruction inst) {
 		break;
 	case OpCode::INT:
 		service_id = field_a;
-		if (service_id == 0) {
+		if (reg_file[service_id] == 0) {
 			std::cout << reg_file[15] << '\n';
 		}
 

@@ -354,8 +354,20 @@ TEST_SUITE("Instructions") {
 		VirtualMachine vm;
 
 		load16(vm, 2, 0xDCBA);
+		auto curr_pc = vm.get_pc();
 		vm.exec(Instruction(OpCode::JAL, 1, 2, 0));
-		CHECK_EQ(vm.get_reg(1), 2);
+		CHECK_EQ(vm.get_reg(1), curr_pc + 2);
+		CHECK_EQ(vm.get_pc(), 0XDCBA);
+	}
+
+	TEST_CASE("JAL-2") {
+		using namespace mycpu;
+		VirtualMachine vm;
+
+		load16(vm, 1, 0xDCBA);
+		auto curr_pc = vm.get_pc();
+		vm.exec(Instruction(OpCode::JAL, 1, 1, 0));
+		CHECK_EQ(vm.get_reg(1), curr_pc + 2);
 		CHECK_EQ(vm.get_pc(), 0XDCBA);
 	}
 
@@ -365,15 +377,29 @@ TEST_SUITE("Instructions") {
 
 		load16(vm, 2, 0xDCBA);
 		load16(vm, 3, 1);
+		auto curr_pc = vm.get_pc();
 		vm.exec(Instruction(OpCode::BAL, 3, 2, 1));
-		CHECK_EQ(vm.get_reg(1), 2);
+		CHECK_EQ(vm.get_reg(1), curr_pc + 2);
 		CHECK_EQ(vm.get_pc(), 0XDCBA);
 
 		load16(vm, 2, 0xBEEF);
 		load16(vm, 3, 1);
+		curr_pc = vm.get_pc();
 		vm.exec(Instruction(OpCode::BAL, 3, 2, 1));
-		CHECK_EQ(vm.get_reg(1), 0XDCBC);
+		CHECK_EQ(vm.get_reg(1), curr_pc + 2);
 		CHECK_EQ(vm.get_pc(), 0XBEEF);
+	}
+
+	TEST_CASE("BAL-2") {
+		using namespace mycpu;
+		VirtualMachine vm;
+
+		load16(vm, 2, 0xDCBA);
+		load16(vm, 3, 1);
+		auto curr_pc = vm.get_pc();
+		vm.exec(Instruction(OpCode::BAL, 3, 2, 2));
+		CHECK_EQ(vm.get_reg(2), curr_pc + 2);
+		CHECK_EQ(vm.get_pc(), 0XDCBA);
 	}
 
 	// INT can't be tested for now
