@@ -219,6 +219,10 @@ bool VirtualMachine::exec(Instruction inst) {
 		jmp_target = field_b;
 
 		tmp = reg_file[jmp_target];
+		if (tmp % 2 == 1) {
+			throw std::runtime_error("Target address for JAL instruction should be even");
+		}
+
 		if (link != 0) {
 			reg_file[link] = program_counter + 2;
 		}
@@ -234,6 +238,10 @@ bool VirtualMachine::exec(Instruction inst) {
 
 		if (reg_file[condition] == 1) {
 			tmp = reg_file[jmp_target];
+			if (tmp % 2 == 1) {
+				throw std::runtime_error("Target address for BAL instruction should be even");
+			}
+
 			if (link != 0) {
 				reg_file[link] = program_counter + 2;
 			}

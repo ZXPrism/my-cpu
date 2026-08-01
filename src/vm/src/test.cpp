@@ -95,12 +95,12 @@ TEST_CASE("x0 should be always 0") {
 	vm.exec(Instruction(OpCode::LDR, 0, 2, 0));
 	CHECK_EQ(vm.get_reg(0), 0);
 
-	vm.exec(Instruction(OpCode::LI, 1, 0, 7));
+	vm.exec(Instruction(OpCode::LI, 1, 0, 8));
 	vm.exec(Instruction(OpCode::JAL, 0, 1, 0));
 	CHECK_EQ(vm.get_reg(0), 0);
 
 	vm.exec(Instruction(OpCode::LI, 1, 0, 1));
-	vm.exec(Instruction(OpCode::LI, 2, 0, 7));
+	vm.exec(Instruction(OpCode::LI, 2, 0, 8));
 	vm.exec(Instruction(OpCode::BAL, 1, 2, 0));
 	CHECK_EQ(vm.get_reg(0), 0);
 }
@@ -327,6 +327,15 @@ TEST_SUITE("Instructions") {
 		CHECK_EQ(vm.get_mem(0xBEEF), 0xDE);
 	}
 
+	TEST_CASE("STR / Odd Addr") {
+		using namespace mycpu;
+		VirtualMachine vm;
+
+		load16(vm, 1, 0xABCD);  // src value
+		load16(vm, 2, 0XFFF9);  // dest mem addr
+		CHECK_THROWS(vm.exec(Instruction(OpCode::STR, 1, 2, 0)));
+	}
+
 	TEST_CASE("LDR") {
 		using namespace mycpu;
 		VirtualMachine vm;
@@ -336,6 +345,14 @@ TEST_SUITE("Instructions") {
 		vm.exec(Instruction(OpCode::STR, 1, 2, 0));
 		vm.exec(Instruction(OpCode::LDR, 1, 2, 0));
 		CHECK_EQ(vm.get_reg(1), 0xDEAD);
+	}
+
+	TEST_CASE("LDR / Odd Addr") {
+		using namespace mycpu;
+		VirtualMachine vm;
+
+		load16(vm, 2, 0XBEEF);  // dest mem addr
+		CHECK_THROWS(vm.exec(Instruction(OpCode::LDR, 1, 2, 0)));
 	}
 
 	TEST_CASE("LI") {
@@ -371,6 +388,14 @@ TEST_SUITE("Instructions") {
 		CHECK_EQ(vm.get_pc(), 0XDCBA);
 	}
 
+	TEST_CASE("JAL / Odd Addr") {
+		using namespace mycpu;
+		VirtualMachine vm;
+
+		load16(vm, 1, 0xDCBB);
+		CHECK_THROWS(vm.exec(Instruction(OpCode::JAL, 1, 1, 0)));
+	}
+
 	TEST_CASE("BAL") {
 		using namespace mycpu;
 		VirtualMachine vm;
@@ -382,12 +407,12 @@ TEST_SUITE("Instructions") {
 		CHECK_EQ(vm.get_reg(1), curr_pc + 2);
 		CHECK_EQ(vm.get_pc(), 0XDCBA);
 
-		load16(vm, 2, 0xBEEF);
+		load16(vm, 2, 0xBEEE);
 		load16(vm, 3, 1);
 		curr_pc = vm.get_pc();
 		vm.exec(Instruction(OpCode::BAL, 3, 2, 1));
 		CHECK_EQ(vm.get_reg(1), curr_pc + 2);
-		CHECK_EQ(vm.get_pc(), 0XBEEF);
+		CHECK_EQ(vm.get_pc(), 0XBEEE);
 	}
 
 	TEST_CASE("BAL-2") {
@@ -400,6 +425,15 @@ TEST_SUITE("Instructions") {
 		vm.exec(Instruction(OpCode::BAL, 3, 2, 2));
 		CHECK_EQ(vm.get_reg(2), curr_pc + 2);
 		CHECK_EQ(vm.get_pc(), 0XDCBA);
+	}
+
+	TEST_CASE("BAL / Odd Addr") {
+		using namespace mycpu;
+		VirtualMachine vm;
+
+		load16(vm, 2, 0x1123);
+		load16(vm, 3, 1);
+		CHECK_THROWS(vm.exec(Instruction(OpCode::BAL, 3, 2, 4)));
 	}
 
 	// INT can't be tested for now
