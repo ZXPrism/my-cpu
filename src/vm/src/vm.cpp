@@ -55,7 +55,7 @@ void VirtualMachine::dump_regs() const {
 	std::cout << "=======\n\n";
 }
 
-StepStatus VirtualMachine::step(Instruction inst) {
+StepStatus VirtualMachine::exec(Instruction inst) {
 	u8 field_a = inst.get_field_a();
 	u8 field_b = inst.get_field_b();
 	u8 field_c = inst.get_field_c();
@@ -274,10 +274,10 @@ void VirtualMachine::run() {
 		    (static_cast<u16>(mem[program_counter + 1]) << 8);
 		auto curr_inst = Instruction(instruction_data);
 
-		auto step_status = step(curr_inst);
-		if (step_status == StepStatus::CONTINUE) {
+		auto exec_status = exec(curr_inst);
+		if (exec_status == StepStatus::CONTINUE) {
 			program_counter += 2;
-		} else if (step_status == StepStatus::HALT) {
+		} else if (exec_status == StepStatus::HALT) {
 			break;
 		}
 	}

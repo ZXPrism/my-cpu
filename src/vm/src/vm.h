@@ -22,7 +22,7 @@ public:
 
 	void dump_regs() const;
 
-	StepStatus step(Instruction inst);
+	StepStatus exec(Instruction inst);
 	void run();
 
 	[[nodiscard]] u16 get_reg(u8 reg_idx) const;
