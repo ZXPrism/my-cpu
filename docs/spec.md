@@ -1,4 +1,4 @@
-# CPU Project Specification (Rev. B - 20260730)
+# CPU Project Specification (Rev. C - 20260808)
 
 ## 1. Project Intent
 
@@ -97,16 +97,20 @@ notation. The final assembly-language syntax is deferred.
 The architectural address space therefore contains 65,536 bytes
 (`0x0000` through `0xFFFF`), equivalent to 64 KiB of storage.
 
-All 16-bit instructions and data values are little-endian:
+All 16-bit instruction encodings and multi-byte data representations are
+little-endian:
 
 ```text
 memory[address]     = value[7:0]
 memory[address + 1] = value[15:8]
 ```
 
-The starting address of every 16-bit instruction fetch, load, and store shall
-be even. Valid starting addresses therefore range from `0x0000` through
-`0xFFFE`. An odd starting address is architecturally invalid.
+The starting address of every 16-bit instruction fetch shall be even. Valid
+instruction addresses therefore range from `0x0000` through `0xFFFE`. An odd
+instruction address is architecturally invalid.
+
+`LDR` and `STR` each access one byte and impose no alignment restriction. Every
+address from `0x0000` through `0xFFFF` is valid for a data access.
 
 ### 3.3 Architectural State
 
@@ -200,10 +204,9 @@ arithmetic flags and does not raise arithmetic-overflow exceptions.
 ### 3.6 Instruction Semantics
 
 In the definitions below, `R[n]` is the value read from register `xn`,
-`load16(a)` loads `memory[a] OR (memory[a + 1] << 8)`, and `store16(a, v)`
-stores `v[7:0]` at `memory[a]` and `v[15:8]` at `memory[a + 1]`. Both
-operations require an even `a`. `s16(v)` is the signed two's-complement
-interpretation of the 16-bit value `v`.
+`R[n][15:8]` and `R[n][7:0]` denote its high and low bytes respectively, and
+`s16(v)` is the signed two's-complement interpretation of the 16-bit value
+`v`.
 
 #### 3.6.1 Arithmetic, Shift, Comparison, and Logic
 
@@ -225,20 +228,24 @@ The effective shift count is therefore in the range 0 through 15.
 
 #### 3.6.2 Memory
 
-| Instruction | Effect                 |
-| ----------- | ---------------------- |
-| `STR A, B`  | `store16(R[B], R[A])`  |
-| `LDR A, B`  | `R[A] <- load16(R[B])` |
+| Instruction | Effect                                             |
+| ----------- | -------------------------------------------------- |
+| `STR A, B`  | `memory[R[B]] <- R[A][7:0]`                        |
+| `LDR A, B`  | `R[A] <- R[A][15:8] || memory[R[B]]`               |
 
-Each memory instruction transfers exactly 16 bits beginning at the byte
-address in its address register. There is no immediate address offset.
+Each memory instruction transfers exactly one byte at the address in its
+address register. There is no immediate address offset. `LDR` replaces only
+the low byte of its destination register and preserves that register's high
+byte. `STR` reads only the low byte of its value register. Neither instruction
+requires an aligned address.
 
 #### 3.6.3 Immediate Load
 
-`LI A, imm8` zero-extends the 8-bit immediate and writes it to `R[A]`:
+`LI A, imm8` replaces the low byte of `R[A]` with the 8-bit immediate and
+preserves its high byte:
 
 ```text
-R[A] <- 0x00 || imm8
+R[A] <- R[A][15:8] || imm8
 ```
 
 `LI` is the only real instruction containing an immediate operand.
@@ -294,10 +301,11 @@ On CPU reset:
 
 Memory contents are established externally before execution.
 
-Fetching an instruction or executing `LDR` or `STR` at an odd starting address
-is architecturally invalid. Hardware behavior for an invalid access is not
-specified, and conforming software shall not rely on it. The virtual machine
-shall diagnose such an access rather than silently aligning it.
+Fetching an instruction at an odd address is architecturally invalid. Hardware
+behavior for an invalid instruction fetch is not specified, and conforming
+software shall not rely on it. The virtual machine shall diagnose such a fetch
+rather than silently aligning it. `LDR` and `STR` are valid at both even and
+odd addresses.
 
 The ISA currently defines no external hardware interrupts or halt instruction.
 An execution-environment service may provide termination.
@@ -306,12 +314,8 @@ An execution-environment service may provide termination.
 
 Pseudoinstructions are assembler conveniences and do not add opcodes to the
 ISA. Multiple real instructions may be used to construct a full 16-bit
-constant or perform byte-oriented operations. Their exact definitions are
+constant or perform multi-byte memory operations. Their exact definitions are
 deferred to the assembly-language specification.
-
-If byte-load or byte-store operations are provided, they shall be
-pseudoinstructions composed from the 16-bit `LDR`, `STR`, and ALU instructions;
-they shall not add real ISA instructions or opcode values.
 
 ## 4. Rust Toolchain
 
@@ -380,7 +384,8 @@ The final CPU will be physically constructed using:
 The following details are intentionally deferred:
 
 - the assembly-language definition;
-- pseudoinstruction expansions, including byte loads and stores;
+- pseudoinstruction expansions, including full-width constant construction and
+  multi-byte loads and stores;
 - the calling convention and other software ABI details;
 - execution-environment service identifiers and conventions;
 - the supported Rust subset, target data layout, and runtime support;

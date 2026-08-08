@@ -23,19 +23,34 @@ int main(int argc, char **argv) {
 namespace mycpu {
 
 // helpers for test
+
+void clr(VirtualMachine &vm, u8 reg_idx) {
+	vm.exec(Instruction(OpCode::XOR, reg_idx, reg_idx, reg_idx));
+}
+
 void load16(VirtualMachine &vm, u8 reg_idx, u16 imm) {
-	assert(reg_idx != 14 && "This register has been reserved as a temp register");
 	assert(reg_idx != 15 && "This register has been reserved as a temp register");
-	vm.exec(Instruction(OpCode::LI, reg_idx, (imm >> 4) & 0xF, imm & 0xF));
-	vm.exec(Instruction(OpCode::LI, 15, imm >> 12, (imm >> 8) & 0xF));
-	vm.exec(Instruction(OpCode::LI, 14, 0, 8));
-	vm.exec(Instruction(OpCode::SLL, 15, 15, 14));
+	vm.exec(Instruction(OpCode::LI, reg_idx, imm >> 12, (imm >> 8) & 0xF));
+	clr(vm, 15);
+	vm.exec(Instruction(OpCode::LI, 15, 0, 8));
+	vm.exec(Instruction(OpCode::SLL, reg_idx, reg_idx, 15));
+	vm.exec(Instruction(OpCode::LI, 15, (imm >> 4) & 0xF, imm & 0xF));
 	vm.exec(Instruction(OpCode::ADD, reg_idx, reg_idx, 15));
 }
 
 }  // namespace mycpu
 
 TEST_SUITE("helpers") {
+	TEST_CASE("clr") {
+		using namespace mycpu;
+		VirtualMachine vm;
+
+		vm.set_reg(12, 12345);
+		CHECK_EQ(vm.get_reg(12), 12345);
+		clr(vm, 12);
+		CHECK_EQ(vm.get_reg(12), 0);
+	}
+
 	TEST_CASE("load16") {
 		using namespace mycpu;
 		VirtualMachine vm;
@@ -123,11 +138,15 @@ TEST_SUITE("Instructions") {
 		using namespace mycpu;
 		VirtualMachine vm;
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 4));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 5));
 		vm.exec(Instruction(OpCode::ADD, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 9);
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 15));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 14));
 		vm.exec(Instruction(OpCode::ADD, 1, 2, 3));
@@ -143,11 +162,15 @@ TEST_SUITE("Instructions") {
 		using namespace mycpu;
 		VirtualMachine vm;
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 9));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 5));
 		vm.exec(Instruction(OpCode::SUB, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 4);  // 9 - 5 =  4
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 3));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 7));
 		vm.exec(Instruction(OpCode::SUB, 1, 2, 3));
@@ -158,11 +181,15 @@ TEST_SUITE("Instructions") {
 		using namespace mycpu;
 		VirtualMachine vm;
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 9));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 3));
 		vm.exec(Instruction(OpCode::SLL, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 72);  // 9 << 3 = 72
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 8, 0));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 15));
 		vm.exec(Instruction(OpCode::SLL, 1, 2, 3));
@@ -173,11 +200,15 @@ TEST_SUITE("Instructions") {
 		using namespace mycpu;
 		VirtualMachine vm;
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 9));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 2));
 		vm.exec(Instruction(OpCode::SRL, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 2);  // 9 >> 2 = 2
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 9));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 6));
 		vm.exec(Instruction(OpCode::SRL, 1, 2, 3));
@@ -188,30 +219,31 @@ TEST_SUITE("Instructions") {
 		using namespace mycpu;
 		VirtualMachine vm;
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 9));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 2));
+
 		vm.exec(Instruction(OpCode::SRA, 1, 2, 3));
-		CHECK_EQ(vm.get_reg(1), 2);
+		CHECK_EQ(vm.get_reg(1), 2);  // 9 >> 2 = 2
 
 		// R[2] = -9
-		vm.exec(Instruction(OpCode::LI, 2, 0xF, 6));
-		vm.exec(Instruction(OpCode::LI, 4, 0xF, 0xF));
-		vm.exec(Instruction(OpCode::LI, 5, 0, 8));
-		vm.exec(Instruction(OpCode::SLL, 4, 4, 5));  // << 8
-		vm.exec(Instruction(OpCode::ADD, 2, 2, 4));  // fill high 8 bits with 0xFF
+		clr(vm, 2);
+		load16(vm, 2, 0xFFF7);
 		// R[3] = 1
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 3, 0, 1));
+
 		vm.exec(Instruction(OpCode::SRA, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 0xFFFB);  // -9 >> 1 = -5
 
 		// R[2] = -9
-		vm.exec(Instruction(OpCode::LI, 2, 0xF, 6));
-		vm.exec(Instruction(OpCode::LI, 4, 0xF, 0xF));
-		vm.exec(Instruction(OpCode::LI, 5, 0, 8));
-		vm.exec(Instruction(OpCode::SLL, 4, 4, 5));  // << 8
-		vm.exec(Instruction(OpCode::ADD, 2, 2, 4));  // fill high 8 bits with 0xFF
+		clr(vm, 2);
+		load16(vm, 2, 0xFFF7);
 		// R[3] = 6
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 3, 0, 6));
+
 		vm.exec(Instruction(OpCode::SRA, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 0xFFFF);  // -9 >> 6 = -1
 	}
@@ -220,56 +252,59 @@ TEST_SUITE("Instructions") {
 		using namespace mycpu;
 		VirtualMachine vm;
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 9));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 2));
 		vm.exec(Instruction(OpCode::SLT, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 0);  // 9 < 2 --> F
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 3));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 4));
 		vm.exec(Instruction(OpCode::SLT, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 1);  // 3 < 4 --> T
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 6));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 6));
 		vm.exec(Instruction(OpCode::SLT, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 0);  // 6 < 6 --> F
 
 		// R[2] = -5
-		vm.exec(Instruction(OpCode::LI, 4, 0, 0));
-		vm.exec(Instruction(OpCode::LI, 5, 0, 5));
-		vm.exec(Instruction(OpCode::SUB, 2, 4, 5));
+		load16(vm, 2, 0xFFFB);
+
+		// R[3] = 6
 		vm.exec(Instruction(OpCode::LI, 3, 0, 6));
+
 		vm.exec(Instruction(OpCode::SLT, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 1);  // -5 < 6 --> T
 
 		// R[2] = -5
-		vm.exec(Instruction(OpCode::LI, 4, 0, 0));
-		vm.exec(Instruction(OpCode::LI, 5, 0, 5));
-		vm.exec(Instruction(OpCode::SUB, 2, 4, 5));
+		load16(vm, 2, 0xFFFB);
+
+		// R[3] = 6
 		vm.exec(Instruction(OpCode::LI, 3, 0, 6));
+
 		vm.exec(Instruction(OpCode::SLT, 1, 3, 2));
 		CHECK_EQ(vm.get_reg(1), 0);  // 6 < -5 --> F
 
 		// R[2] = -5
-		vm.exec(Instruction(OpCode::LI, 4, 0, 0));
-		vm.exec(Instruction(OpCode::LI, 5, 0, 5));
-		vm.exec(Instruction(OpCode::SUB, 2, 4, 5));
+		load16(vm, 2, 0xFFFB);
+
 		// R[3] = -17
-		vm.exec(Instruction(OpCode::LI, 4, 0, 0));
-		vm.exec(Instruction(OpCode::LI, 5, 1, 1));
-		vm.exec(Instruction(OpCode::SUB, 3, 4, 5));
+		load16(vm, 3, 0xFFEF);
+
 		vm.exec(Instruction(OpCode::SLT, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 0);  // -5 < -17 --> F
 
 		// R[2] = -26
-		vm.exec(Instruction(OpCode::LI, 4, 0, 0));
-		vm.exec(Instruction(OpCode::LI, 5, 1, 10));
-		vm.exec(Instruction(OpCode::SUB, 2, 4, 5));
+		load16(vm, 2, 0xFFE6);
 		// R[3] = -19
-		vm.exec(Instruction(OpCode::LI, 4, 0, 0));
-		vm.exec(Instruction(OpCode::LI, 5, 1, 3));
-		vm.exec(Instruction(OpCode::SUB, 3, 4, 5));
+		load16(vm, 3, 0xFFED);
+
 		vm.exec(Instruction(OpCode::SLT, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 1);  // -26 < -19 --> T
 	}
@@ -278,21 +313,29 @@ TEST_SUITE("Instructions") {
 		using namespace mycpu;
 		VirtualMachine vm;
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 9));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 2));
 		vm.exec(Instruction(OpCode::SLTU, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 0);  // 9 < 2 --> F
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 3));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 4));
 		vm.exec(Instruction(OpCode::SLTU, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 1);  // 3 < 4 --> T
 
+		clr(vm, 2);
+		clr(vm, 3);
 		vm.exec(Instruction(OpCode::LI, 2, 0, 6));
 		vm.exec(Instruction(OpCode::LI, 3, 0, 6));
 		vm.exec(Instruction(OpCode::SLTU, 1, 2, 3));
 		CHECK_EQ(vm.get_reg(1), 0);  // 6 < 6 --> F
 
+		clr(vm, 4);
+		clr(vm, 5);
 		// R[2] = 65510 (-26)
 		vm.exec(Instruction(OpCode::LI, 4, 0, 0));
 		vm.exec(Instruction(OpCode::LI, 5, 1, 10));
@@ -305,6 +348,8 @@ TEST_SUITE("Instructions") {
 		CHECK_EQ(vm.get_reg(1), 1);  // 65510 < 65517 --> T (-26 < -19 --> T)
 
 		// R[2] = 65510 (-26)
+		clr(vm, 4);
+		clr(vm, 5);
 		vm.exec(Instruction(OpCode::LI, 4, 0, 0));
 		vm.exec(Instruction(OpCode::LI, 5, 1, 10));
 		vm.exec(Instruction(OpCode::SUB, 2, 4, 5));
@@ -318,11 +363,13 @@ TEST_SUITE("Instructions") {
 		using namespace mycpu;
 		VirtualMachine vm;
 
-		// id est CLR
+		clr(vm, 14);
 		vm.exec(Instruction(OpCode::LI, 14, 0, 13));
 		vm.exec(Instruction(OpCode::XOR, 14, 14, 14));
 		CHECK_EQ(vm.get_reg(14), 0);
 
+		clr(vm, 3);
+		clr(vm, 4);
 		vm.exec(Instruction(OpCode::LI, 3, 0, 12));
 		vm.exec(Instruction(OpCode::LI, 4, 0x4, 0xD));
 		vm.exec(Instruction(OpCode::XOR, 7, 3, 4));
@@ -333,6 +380,8 @@ TEST_SUITE("Instructions") {
 		using namespace mycpu;
 		VirtualMachine vm;
 
+		clr(vm, 3);
+		clr(vm, 4);
 		vm.exec(Instruction(OpCode::LI, 3, 0, 12));
 		vm.exec(Instruction(OpCode::LI, 4, 0x4, 0xD));
 		vm.exec(Instruction(OpCode::OR, 7, 3, 4));
@@ -343,6 +392,8 @@ TEST_SUITE("Instructions") {
 		using namespace mycpu;
 		VirtualMachine vm;
 
+		clr(vm, 3);
+		clr(vm, 4);
 		vm.exec(Instruction(OpCode::LI, 3, 0, 12));
 		vm.exec(Instruction(OpCode::LI, 4, 0x4, 0xD));
 		vm.exec(Instruction(OpCode::AND, 7, 3, 4));
@@ -357,22 +408,6 @@ TEST_SUITE("Instructions") {
 		load16(vm, 2, 0XFFFE);  // dest mem addr
 		vm.exec(Instruction(OpCode::STR, 1, 2, 0));
 		CHECK_EQ(vm.get_mem(0xFFFE), 0xCD);
-		CHECK_EQ(vm.get_mem(0xFFFF), 0xAB);
-
-		load16(vm, 1, 0xDEAD);  // src value
-		load16(vm, 2, 0XBEEE);  // dest mem addr
-		vm.exec(Instruction(OpCode::STR, 1, 2, 0));
-		CHECK_EQ(vm.get_mem(0xBEEE), 0xAD);
-		CHECK_EQ(vm.get_mem(0xBEEF), 0xDE);
-	}
-
-	TEST_CASE("STR / Odd Addr") {
-		using namespace mycpu;
-		VirtualMachine vm;
-
-		load16(vm, 1, 0xABCD);  // src value
-		load16(vm, 2, 0XFFF9);  // dest mem addr
-		CHECK_THROWS(vm.exec(Instruction(OpCode::STR, 1, 2, 0)));
 	}
 
 	TEST_CASE("LDR") {
@@ -386,23 +421,15 @@ TEST_SUITE("Instructions") {
 		CHECK_EQ(vm.get_reg(1), 0xDEAD);
 	}
 
-	TEST_CASE("LDR / Odd Addr") {
-		using namespace mycpu;
-		VirtualMachine vm;
-
-		load16(vm, 2, 0XBEEF);  // dest mem addr
-		CHECK_THROWS(vm.exec(Instruction(OpCode::LDR, 1, 2, 0)));
-	}
-
 	TEST_CASE("LI") {
 		using namespace mycpu;
 		VirtualMachine vm;
 
 		vm.exec(Instruction(OpCode::LI, 1, 0, 11));
-		CHECK_EQ(vm.get_reg(1), 11);
+		CHECK_EQ(vm.get_reg(1) & 0xFF, 11);
 
 		vm.exec(Instruction(OpCode::LI, 1, 0xA, 0xB));
-		CHECK_EQ(vm.get_reg(1), 0xAB);
+		CHECK_EQ(vm.get_reg(1) & 0xFF, 0xAB);
 	}
 
 	TEST_CASE("JAL") {

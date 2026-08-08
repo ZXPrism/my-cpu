@@ -16,13 +16,13 @@ VirtualMachine::VirtualMachine() {
 	// randomly fill reg file
 	std::random_device rd;
 	std::mt19937_64 engine(rd());
-	std::uniform_int_distribution<u32> dist16(0, (1 << 16) - 1);
+	std::uniform_int_distribution<u32> dist16(1, (1 << 16) - 1);
 	for (int i = 1; i < REG_COUNT; i++) {
 		reg_file[i] = static_cast<u16>(dist16(engine));
 	}
 
 	// randomly fill memory
-	std::uniform_int_distribution<u32> dist8(0, (1 << 8) - 1);
+	std::uniform_int_distribution<u32> dist8(1, (1 << 8) - 1);
 	for (int i = 0; i < MEM_SIZE_BYTES; i++) {
 		mem[i] = static_cast<u8>(dist8(engine));
 	}
@@ -166,24 +166,16 @@ StepStatus VirtualMachine::exec(Instruction inst) {
 		src = field_a;
 		dest = field_b;
 
-		if (reg_file[dest] % 2 == 1) {
-			throw std::runtime_error("Destination address for STR instruction should be even");
-		}
-
 		mem[reg_file[dest]] = reg_file[src] & 0xFF;
-		mem[reg_file[dest] + 1] = (reg_file[src] >> 8) & 0xFF;
 
 		break;
 	case OpCode::LDR:
 		dest = field_a;
 		src = field_b;
 
-		if (reg_file[src] % 2 == 1) {
-			throw std::runtime_error("Source address for LDR instruction should be even");
-		}
-
 		if (dest != 0) {
-			reg_file[dest] = mem[reg_file[src]] + (static_cast<u16>(mem[reg_file[src] + 1]) << 8);
+			reg_file[dest] &= ~static_cast<u16>(0xff);
+			reg_file[dest] += mem[reg_file[src]];
 		}
 
 		break;
@@ -192,7 +184,8 @@ StepStatus VirtualMachine::exec(Instruction inst) {
 		imm = static_cast<u8>((field_b << 4) + field_c);
 
 		if (dest != 0) {
-			reg_file[dest] = imm;
+			reg_file[dest] &= ~static_cast<u16>(0xff);
+			reg_file[dest] += imm;
 		}
 
 		break;
@@ -273,6 +266,11 @@ u8 VirtualMachine::get_mem(u16 addr) const {
 
 u16 VirtualMachine::get_pc() const {
 	return program_counter;
+}
+
+void VirtualMachine::set_reg(u8 reg_idx, u16 value) {
+	assert(reg_idx < REG_COUNT);
+	reg_file[reg_idx] = value;
 }
 
 void VirtualMachine::load_instruction(Instruction inst, u16 addr) {
