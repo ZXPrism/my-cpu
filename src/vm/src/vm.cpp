@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstdio>
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -228,9 +229,16 @@ StepStatus VirtualMachine::exec(Instruction inst) {
 		break;
 	case OpCode::INT:
 		service_id = reg_file[field_a];
+
 		if (service_id == 0) {
 			return StepStatus::HALT;
 		}
+
+		if (service_id == 1) {
+			std::putchar(reg_file[15]);
+			break;
+		}
+
 		throw std::runtime_error(std::format("Unknown service id {}", service_id));
 
 		break;

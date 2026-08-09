@@ -16,17 +16,20 @@ int main(int argc, char **argv) {
 
 	CLI11_PARSE(app, argc, argv);
 
-	using namespace mycpu;
-	mycpu::VirtualMachine vm;
+	try {
+		using namespace mycpu;
+		mycpu::VirtualMachine vm;
 
-	vm.load_from_file(bytecode_file_path);
-	vm.run();
+		vm.load_from_file(bytecode_file_path);
+		vm.run();
 
-	if (dump_memory) {
-		vm.dump_memory("memory.bin");
+		if (dump_memory) {
+			vm.dump_memory("memory.bin");
+		}
+	} catch (const std::exception &e) {
+		std::cout << e.what() << std::endl;
+		return EXIT_FAILURE;
 	}
 
-	std::cout << "Exiting.." << std::endl;
-
-	return 0;
+	return EXIT_SUCCESS;
 }
