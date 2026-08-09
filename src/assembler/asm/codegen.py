@@ -53,13 +53,6 @@ class Codegen:
             case ast.InstDB():
                 return len(stmt.data)
             case ast.InstLL():
-                # === LL expansion rule ===
-                # LL rd, rt, label <=>
-                # LI rd, label[15:12], label[11:8]
-                # LI rt, 0, 8
-                # SLL rd, rd, rt
-                # LI rt, label[7:4], label[3:0]
-                # ADD rd, rd, rt
                 return 12
             case ast.LabelDefinition():
                 raise RuntimeError("This branch should be unreachable")
