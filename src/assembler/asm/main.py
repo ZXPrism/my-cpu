@@ -1,3 +1,5 @@
+import argparse
+
 from asm.tokenizer import Tokenizer
 from asm.parser import Parser
 from asm.codegen import Codegen
@@ -10,20 +12,29 @@ def error(line_no: int, msg: str):
 
 
 def main():
-    with open("asm/test/fib.s", "r") as fp:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", "-i", dest="input", required=True)
+    parser.add_argument("--output", "-o", dest="output", required=True)
+    parser.add_argument("--tokens", action="store_true")
+    parser.add_argument("--ast", action="store_true")
+    args = parser.parse_args()
+
+    with open(args.input, "r") as fp:
         src = fp.read()
 
     tokenizer = Tokenizer(src, lambda line_no, msg: error(line_no, msg))
     tokens = tokenizer.scan_tokens()
-    for token in tokens:
-        print(token)
+    if args.tokens:
+        for token in tokens:
+            print(token)
 
     parser = Parser(tokens)
     program = parser.parse()
-    print(program)
+    if args.ast:
+        print(program)
 
     codegen = Codegen(program)
-    codegen.emit("code.bin")
+    codegen.emit(args.output)
 
 
 if __name__ == "__main__":
