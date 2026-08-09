@@ -7,9 +7,8 @@ from rich import print
 
 
 class Parser:
-    def __init__(self, tokens: list[Token], on_error: Callable[[int, str], None]):
+    def __init__(self, tokens: list[Token]):
         self._tokens = tokens
-        self._on_error = on_error
         self._current_pos = 0
         self._line_no = 0
 
@@ -256,8 +255,22 @@ class Parser:
         return ast.InstCLR(rd)
 
     def _parse_db(self) -> ast.Statement:
-        data = self._consume(TokenType.STRING, "Expected a string after DB")
-        return ast.InstDB(cast(str, data.literal).encode("utf-8"))
+        if self._peek_type() == TokenType.STRING:
+            data = self._advance()
+            return ast.InstDB(cast(str, data.literal).encode("utf-8"))
+
+        if self._peek_type() == TokenType.NUMBER:
+            data = []
+
+            while self._peek_type() == TokenType.NUMBER:
+                number = cast(int, self._advance().literal)
+                data.append(number)
+                if not self._match(TokenType.COMMA):
+                    break
+
+            return ast.InstDB(bytes(data))
+
+        raise RuntimeError("Invalid DB instruction usage")
 
     def _parse_hlt(self) -> ast.Statement:
         return ast.InstHLT()
@@ -292,6 +305,11 @@ class Parser:
     # ============
     #  Intrinsics
     # ============
+
+    def _advance(self) -> Token:
+        token = self._tokens[self._current_pos]
+        self._current_pos += 1
+        return token
 
     def _peek(self) -> Token:
         return self._tokens[self._current_pos]

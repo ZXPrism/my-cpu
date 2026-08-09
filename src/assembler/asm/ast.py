@@ -161,7 +161,31 @@ class LabelDefinition:
     name: str
 
 
-Statement: TypeAlias = InstADD | InstSUB | LabelDefinition
+Statement: TypeAlias = (
+    InstADD
+    | InstSUB
+    | InstSLL
+    | InstSRL
+    | InstSRA
+    | InstSLT
+    | InstSLTU
+    | InstXOR
+    | InstOR
+    | InstAND
+    | InstSTR
+    | InstLDR
+    | InstLI
+    | InstJAL
+    | InstBAL
+    | InstINT
+    | InstCLR
+    | InstDB
+    | InstHLT
+    | InstJMP
+    | InstLL
+    | InstMOV
+    | LabelDefinition
+)
 
 
 @dataclass

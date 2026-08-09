@@ -1,5 +1,6 @@
 from asm.tokenizer import Tokenizer
 from asm.parser import Parser
+from asm.codegen import Codegen
 
 from rich import print
 
@@ -17,9 +18,12 @@ def main():
     for token in tokens:
         print(token)
 
-    parser = Parser(tokens, lambda line_no, msg: error(line_no, msg))
+    parser = Parser(tokens)
     program = parser.parse()
     print(program)
+
+    codegen = Codegen(program)
+    codegen.emit("code.bin")
 
 
 if __name__ == "__main__":
