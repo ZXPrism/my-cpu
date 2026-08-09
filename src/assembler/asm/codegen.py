@@ -70,7 +70,104 @@ class Codegen:
                     inst = (OpCode.ADD << 12) | (rd.idx << 8) | (rs1.idx << 4) | rs2.idx
                     bytecode.append(inst & 0xFF)
                     bytecode.append(inst >> 8)
-                # TODO: populate rest cases (ignore LabelDefinition)
+                case ast.InstSUB(rd, rs1, rs2):
+                    inst = (OpCode.SUB << 12) | (rd.idx << 8) | (rs1.idx << 4) | rs2.idx
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstSLL(rd, rs, r_shift):
+                    inst = (OpCode.SLL << 12) | (rd.idx << 8) | (rs.idx << 4) | r_shift.idx
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstSRL(rd, rs, r_shift):
+                    inst = (OpCode.SRL << 12) | (rd.idx << 8) | (rs.idx << 4) | r_shift.idx
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstSRA(rd, rs, r_shift):
+                    inst = (OpCode.SRA << 12) | (rd.idx << 8) | (rs.idx << 4) | r_shift.idx
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstSLT(rd, rs1, rs2):
+                    inst = (OpCode.SLT << 12) | (rd.idx << 8) | (rs1.idx << 4) | rs2.idx
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstSLTU(rd, rs1, rs2):
+                    inst = (OpCode.SLTU << 12) | (rd.idx << 8) | (rs1.idx << 4) | rs2.idx
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstXOR(rd, rs1, rs2):
+                    inst = (OpCode.XOR << 12) | (rd.idx << 8) | (rs1.idx << 4) | rs2.idx
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstOR(rd, rs1, rs2):
+                    inst = (OpCode.OR << 12) | (rd.idx << 8) | (rs1.idx << 4) | rs2.idx
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstAND(rd, rs1, rs2):
+                    inst = (OpCode.AND << 12) | (rd.idx << 8) | (rs1.idx << 4) | rs2.idx
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstSTR(rs, rd_addr):
+                    inst = (OpCode.STR << 12) | (rs.idx << 8) | (rd_addr.idx << 4)
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstLDR(rd, rs_addr):
+                    inst = (OpCode.LDR << 12) | (rd.idx << 8) | (rs_addr.idx << 4)
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstLI(rd, imm):
+                    inst = (OpCode.LI << 12) | (rd.idx << 8) | imm
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstJAL(r_link, r_jmp_target):
+                    inst = (OpCode.JAL << 12) | (r_link.idx << 8) | (r_jmp_target.idx << 4)
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstBAL(condition, r_jmp_target, r_link):
+                    inst = (
+                        (OpCode.BAL << 12)
+                        | (condition.idx << 8)
+                        | (r_jmp_target.idx << 4)
+                        | r_link.idx
+                    )
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstINT(r_service_id):
+                    inst = (OpCode.INT << 12) | (r_service_id.idx << 8)
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstCLR(rd):
+                    inst = (OpCode.XOR << 12) | (rd.idx << 8) | (rd.idx << 4) | rd.idx
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstDB(data):
+                    bytecode.extend(data)
+                case ast.InstHLT():
+                    inst = OpCode.INT << 12
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstJMP(r_jmp_target):
+                    inst = (OpCode.JAL << 12) | (r_jmp_target.idx << 4)
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.InstLL(rd, rt, label):
+                    label_addr = self.map_symbol_to_addr[label]
+                    instructions = [
+                        (OpCode.LI << 12) | (rd.idx << 8) | ((label_addr >> 8) & 0xFF),
+                        (OpCode.XOR << 12) | (rt.idx << 8) | (rt.idx << 4) | rt.idx,
+                        (OpCode.LI << 12) | (rt.idx << 8) | 8,
+                        (OpCode.SLL << 12) | (rd.idx << 8) | (rd.idx << 4) | rt.idx,
+                        (OpCode.LI << 12) | (rt.idx << 8) | (label_addr & 0xFF),
+                        (OpCode.ADD << 12) | (rd.idx << 8) | (rd.idx << 4) | rt.idx,
+                    ]
+                    for inst in instructions:
+                        bytecode.append(inst & 0xFF)
+                        bytecode.append(inst >> 8)
+                case ast.InstMOV(rd, rs):
+                    inst = (OpCode.ADD << 12) | (rd.idx << 8) | (rs.idx << 4)
+                    bytecode.append(inst & 0xFF)
+                    bytecode.append(inst >> 8)
+                case ast.LabelDefinition():
+                    pass
 
         return bytecode
 
