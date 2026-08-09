@@ -146,6 +146,7 @@ class InstJMP:
 @dataclass
 class InstLL:
     rd: Register
+    rt: Register
     label: str
 
 
