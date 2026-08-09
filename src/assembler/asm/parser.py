@@ -3,12 +3,15 @@ from typing import Callable, cast
 from asm.token import Token, TokenType
 import asm.ast as ast
 
+from rich import print
+
 
 class Parser:
     def __init__(self, tokens: list[Token], on_error: Callable[[int, str], None]):
         self._tokens = tokens
         self._on_error = on_error
         self._current_pos = 0
+        self._line_no = 0
 
     # ===================
     #  Statement Parsers
@@ -17,9 +20,13 @@ class Parser:
     def parse(self) -> ast.Program:
         statements: list[ast.Statement] = []
 
-        while not self._is_at_end():
-            stmt = self._parse_statement()
-            statements.append(stmt)
+        try:
+            while not self._is_at_end():
+                stmt = self._parse_statement()
+                statements.append(stmt)
+        except RuntimeError as e:
+            print(f"Error at line {self._line_no}: {e}")
+            raise e
 
         return ast.Program(statements)
 
@@ -298,6 +305,7 @@ class Parser:
     def _match(self, token_type: TokenType) -> bool:
         if self._peek_type() == token_type:
             self._current_pos += 1
+            self._line_no = self._peek().line_no
             return True
         return False
 
@@ -305,6 +313,7 @@ class Parser:
         if self._peek_type() == token_type:
             token = self._peek()
             self._current_pos += 1
+            self._line_no = self._peek().line_no
             return token
         raise RuntimeError(error_msg)
 
