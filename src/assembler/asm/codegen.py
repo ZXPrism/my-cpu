@@ -27,7 +27,12 @@ class OpCode(IntEnum):
 class Codegen:
     def __init__(self, program: ast.Program):
         self._program = program
-        self.map_symbol_to_addr: dict[str, int] = {}
+        self._map_symbol_to_addr: dict[str, int] = {}
+
+        self._resolve_symbols()
+
+    def get_symbol_addr(self, symbol: str) -> int:
+        return self._map_symbol_to_addr[symbol]
 
     def _resolve_symbols(self):
         current_addr = 0
@@ -35,11 +40,11 @@ class Codegen:
         for stmt in self._program.statements:
             match stmt:
                 case ast.LabelDefinition(name):
-                    if name in self.map_symbol_to_addr:
+                    if name in self._map_symbol_to_addr:
                         raise RuntimeError(
                             f"Found duplicate definition of label {name}"
                         )
-                    self.map_symbol_to_addr[name] = current_addr
+                    self._map_symbol_to_addr[name] = current_addr
                 case _:
                     current_addr += self._get_encoded_size_bytes(stmt)
 
@@ -75,15 +80,21 @@ class Codegen:
                     bytecode.append(inst & 0xFF)
                     bytecode.append(inst >> 8)
                 case ast.InstSLL(rd, rs, r_shift):
-                    inst = (OpCode.SLL << 12) | (rd.idx << 8) | (rs.idx << 4) | r_shift.idx
+                    inst = (
+                        (OpCode.SLL << 12) | (rd.idx << 8) | (rs.idx << 4) | r_shift.idx
+                    )
                     bytecode.append(inst & 0xFF)
                     bytecode.append(inst >> 8)
                 case ast.InstSRL(rd, rs, r_shift):
-                    inst = (OpCode.SRL << 12) | (rd.idx << 8) | (rs.idx << 4) | r_shift.idx
+                    inst = (
+                        (OpCode.SRL << 12) | (rd.idx << 8) | (rs.idx << 4) | r_shift.idx
+                    )
                     bytecode.append(inst & 0xFF)
                     bytecode.append(inst >> 8)
                 case ast.InstSRA(rd, rs, r_shift):
-                    inst = (OpCode.SRA << 12) | (rd.idx << 8) | (rs.idx << 4) | r_shift.idx
+                    inst = (
+                        (OpCode.SRA << 12) | (rd.idx << 8) | (rs.idx << 4) | r_shift.idx
+                    )
                     bytecode.append(inst & 0xFF)
                     bytecode.append(inst >> 8)
                 case ast.InstSLT(rd, rs1, rs2):
@@ -91,7 +102,9 @@ class Codegen:
                     bytecode.append(inst & 0xFF)
                     bytecode.append(inst >> 8)
                 case ast.InstSLTU(rd, rs1, rs2):
-                    inst = (OpCode.SLTU << 12) | (rd.idx << 8) | (rs1.idx << 4) | rs2.idx
+                    inst = (
+                        (OpCode.SLTU << 12) | (rd.idx << 8) | (rs1.idx << 4) | rs2.idx
+                    )
                     bytecode.append(inst & 0xFF)
                     bytecode.append(inst >> 8)
                 case ast.InstXOR(rd, rs1, rs2):
@@ -119,7 +132,9 @@ class Codegen:
                     bytecode.append(inst & 0xFF)
                     bytecode.append(inst >> 8)
                 case ast.InstJAL(r_link, r_jmp_target):
-                    inst = (OpCode.JAL << 12) | (r_link.idx << 8) | (r_jmp_target.idx << 4)
+                    inst = (
+                        (OpCode.JAL << 12) | (r_link.idx << 8) | (r_jmp_target.idx << 4)
+                    )
                     bytecode.append(inst & 0xFF)
                     bytecode.append(inst >> 8)
                 case ast.InstBAL(condition, r_jmp_target, r_link):
@@ -150,7 +165,7 @@ class Codegen:
                     bytecode.append(inst & 0xFF)
                     bytecode.append(inst >> 8)
                 case ast.InstLL(rd, rt, label):
-                    label_addr = self.map_symbol_to_addr[label]
+                    label_addr = self._map_symbol_to_addr[label]
                     instructions = [
                         (OpCode.LI << 12) | (rd.idx << 8) | ((label_addr >> 8) & 0xFF),
                         (OpCode.XOR << 12) | (rt.idx << 8) | (rt.idx << 4) | rt.idx,
@@ -172,7 +187,6 @@ class Codegen:
         return bytecode
 
     def emit(self, bytecode_file_path: str):
-        self._resolve_symbols()
         bytecode = self._encode_bytecode()
         with open(bytecode_file_path, "wb") as fp:
             fp.write(bytecode)

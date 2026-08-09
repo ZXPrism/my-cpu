@@ -30,3 +30,4 @@ Instruction validation should happen before pseudoinstruction expansion, or the 
 
 ## TODO
 - [ ] `260809` Support hex literals
+- [ ] `260809` Improve error handling

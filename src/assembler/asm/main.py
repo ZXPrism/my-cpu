@@ -11,7 +11,7 @@ def error(line_no: int, msg: str):
     print(f"[line {line_no}] Error: {msg}")
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", "-i", dest="input", required=True)
     parser.add_argument("--output", "-o", dest="output", required=True)
@@ -36,6 +36,8 @@ def main():
     codegen = Codegen(program)
     codegen.emit(args.output)
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
