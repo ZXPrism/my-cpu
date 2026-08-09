@@ -41,15 +41,6 @@ def register_test(asm_file: str):
     return decorator
 
 
-@register_test("fib.s")
-def test_fib(context: TestContext):
-    result_addr = context.codegen.get_symbol_addr("result")
-    expected = bytes([1, 2, 3, 5, 8, 13, 21, 34, 55, 89])
-    actual = context.memory[result_addr : result_addr + len(expected)]
-
-    assert actual == expected, f"Expected {list(expected)}, found {list(actual)}"
-
-
 def _assemble(source_path: Path, bytecode_path: Path) -> Codegen:
     source = source_path.read_text(encoding="utf-8")
     tokenizer_errors: list[str] = []
@@ -139,6 +130,20 @@ def main() -> int:
 
     print(f"{passed}/{len(_tests)} tests passed")
     return 0 if passed == len(_tests) else 1
+
+
+# ========
+#  tests
+# =======
+
+
+@register_test("fib.s")
+def test_fib(context: TestContext):
+    result_addr = context.codegen.get_symbol_addr("result")
+    expected = bytes([1, 2, 3, 5, 8, 13, 21, 34, 55, 89])
+    actual = context.memory[result_addr : result_addr + len(expected)]
+
+    assert actual == expected, f"Expected {list(expected)}, found {list(actual)}"
 
 
 if __name__ == "__main__":
