@@ -1,13 +1,15 @@
 from asm.tokenizer import Tokenizer
 from asm.parser import Parser
 
+from rich import print
+
 
 def error(line_no: int, msg: str):
     print(f"[line {line_no}] Error: {msg}")
 
 
 def main():
-    with open("asm/test/test.s", "r") as fp:
+    with open("asm/test/fib.s", "r") as fp:
         src = fp.read()
 
     tokenizer = Tokenizer(src, lambda line_no, msg: error(line_no, msg))
